@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+
+import { useEffect, useRef, useState } from 'react';
 import { timeConverter } from '../../common/utils/time';
 import { ITarefa } from '../../types/tarefa';
 import { Button } from '../Button';
@@ -12,21 +13,53 @@ interface Props {
 
 export function Timer({ selected, endTarefa }: Props) {
   const [time, setTime] = useState<number>();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function pararCronometro() {
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }
 
   useEffect(() => {
+    pararCronometro();
+
     if (selected?.tempo) {
       setTime(timeConverter(selected.tempo));
+    } else {
+      setTime(undefined);
     }
+
+    return pararCronometro;
   }, [selected]);
 
-  function regressiva(contador: number = 0) {
-    setTimeout(() => {
-      if (contador > 0) {
-        setTime(contador - 1);
-        regressiva(contador - 1);
+  function regressiva() {
+    if (time === undefined || time <= 0) return;
+
+    pararCronometro();
+
+    let contador = time;
+
+    intervalRef.current = setInterval(() => {
+      contador -= 1;
+      setTime(contador);
+
+      if (contador <= 0) {
+        pararCronometro();
+        endTarefa();
       }
-      endTarefa();
     }, 1000);
+  }
+
+  function resetar() {
+    pararCronometro();
+
+    if (selected?.tempo) {
+      setTime(timeConverter(selected.tempo));
+    } else {
+      setTime(undefined);
+    }
   }
 
   return (
@@ -35,7 +68,8 @@ export function Timer({ selected, endTarefa }: Props) {
       <div className={S.clockWrapper}>
         <Clock time={time} />
       </div>
-      <Button title="Iniciar" onClick={() => regressiva(time)} />
+      <Button title="Iniciar" onClick={regressiva} />
+      <Button title="Resetar" onClick={resetar} />
     </div>
   );
 }
